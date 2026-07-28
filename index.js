@@ -64,6 +64,41 @@ function calcularFechasBloqueadas(historial) {
     return bloqueadas;
 }
 
+// Menú Principal Interactivo (Botones)
+async function enviarMenuPrincipal(telefono, nombre) {
+    const data = {
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: telefono,
+        type: "interactive",
+        interactive: {
+            type: "button",
+            header: { type: "text", text: "Sanidad UNS" },
+            body: { text: `¡Hola ${nombre}! Bienvenido al centro de atención. Por favor, seleccioná una opción:` },
+            footer: { text: "Servicio de Medicina Laboral" },
+            action: {
+                buttons: [
+                    {
+                        type: "reply",
+                        reply: { id: "btn_inasistencia", title: "📋 Inasistencia" }
+                    },
+                    {
+                        type: "reply",
+                        reply: { id: "btn_turno", title: "🩺 Reservar Turno" }
+                    }
+                ]
+            }
+        }
+    };
+    try {
+        await axios.post(`https://graph.facebook.com/v18.0/${PHONE_NUMBER_ID}/messages`, data, {
+            headers: { 'Authorization': `Bearer ${WHATSAPP_TOKEN}` }
+        });
+    } catch (e) {
+        console.error("Error enviando menú principal:", e.response?.data || e.message);
+    }
+}
+
 // Actualizado para inyectar las fechas bloqueadas al abrir el Flow
 async function enviarFlowAusentismo(connection, telefono, nombre) {
     // 1. Buscamos el historial para mandar las fechas bloqueadas
@@ -188,9 +223,9 @@ async function manejarOnboarding(connection, telefono, texto) {
                 // 4. Borramos la sesión temporal (ahora sí va a funcionar)
                 await connection.execute('DELETE FROM registro_estados WHERE telefono = ?', [telefono]);
 
-                // 5. Avisamos y abrimos el formulario de inasistencias
+                // 5. Avisamos y enviamos el menú principal
                 await enviarMensajeWA(telefono, "✅ ¡Validación exitosa!");
-                await enviarFlowAusentismo(connection, telefono, personal[0]?.nombre || "Usuario");
+                await enviarMenuPrincipal(telefono, personal[0]?.nombre || "Usuario");
 
             } catch (errDb) {
                 // Si la base de datos falla, evitamos que el bot se quede mudo
@@ -232,8 +267,22 @@ functions.http('webhookSanidad', async (req, res) => {
             const connection = await mysql.createConnection(dbConfig);
 
             try {
+                // 0. RECEPCIÓN DE RESPUESTA DE BOTONES INTERACTIVOS (MENÚ PRINCIPAL)
+                if (mensajeData.type === 'interactive' && mensajeData.interactive.button_reply) {
+                    const buttonId = mensajeData.interactive.button_reply.id;
+                    const [usuarios] = await connection.execute('SELECT nombre FROM personal_uns WHERE telefono_wa = ? AND validado = 1', [telefono]);
+                    const nombre = usuarios[0]?.nombre || "Usuario";
+
+                    if (buttonId === 'btn_inasistencia') {
+                        await enviarFlowAusentismo(connection, telefono, nombre);
+                    } else if (buttonId === 'btn_turno') {
+                        await enviarMensajeWA(telefono, "🩺 Para solicitar un turno médico, por favor comunícate con la Secretaría de Sanidad UNS o envía tu consulta.");
+                    }
+                    return res.sendStatus(200);
+                }
+
                 // 1. RECEPCIÓN DE FLOW (DATOS DEL FORMULARIO - DOBLE CALENDARIO)
-                if (mensajeData.type === 'interactive' && mensajeData.interactive.nfm_reply) {
+                else if (mensajeData.type === 'interactive' && mensajeData.interactive.nfm_reply) {
                     const resp = JSON.parse(mensajeData.interactive.nfm_reply.response_json);
 
                     // Asegurarse de que los campos existan
@@ -377,8 +426,7 @@ functions.http('webhookSanidad', async (req, res) => {
                     const [usuarios] = await connection.execute('SELECT nombre FROM personal_uns WHERE telefono_wa = ? AND validado = 1', [telefono]);
 
                     if (usuarios.length > 0) {
-                        // Pasamos connection para que pueda buscar el historial
-                        await enviarFlowAusentismo(connection, telefono, usuarios[0].nombre);
+                        await enviarMenuPrincipal(telefono, usuarios[0].nombre);
                     } else {
                         await manejarOnboarding(connection, telefono, texto);
                     }

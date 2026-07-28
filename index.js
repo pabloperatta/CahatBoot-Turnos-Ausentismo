@@ -29,6 +29,7 @@ const transporter = nodemailer.createTransport({
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
 const FLOW_ID = process.env.FLOW_ID || "1492426432562187";
+const FLOW_TURNOS_ID = process.env.FLOW_TURNOS_ID || process.env.FLOW_ID || "1492426432562187";
 
 // --- 2. FUNCIONES DE APOYO Y COMUNICACIÓN ---
 
@@ -147,6 +148,41 @@ async function enviarFlowAusentismo(connection, telefono, nombre) {
         });
     } catch (e) {
         console.error("Error enviando Flow:", e.response?.data || e.message);
+    }
+}
+
+async function enviarFlowTurnos(connection, telefono, nombre) {
+    const data = {
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: telefono,
+        type: "interactive",
+        interactive: {
+            type: "flow",
+            header: { type: "text", text: "Servicio de Medicina del Trabajo" },
+            body: { text: `Hola ${nombre}, para reservar tu turno médico presiona el botón de abajo.` },
+            footer: { text: "Sistema de Gestión de Turnos" },
+            action: {
+                name: "flow",
+                parameters: {
+                    flow_message_version: "3",
+                    flow_token: "token_" + Math.random().toString(36).substring(7),
+                    flow_id: FLOW_TURNOS_ID,
+                    flow_cta: "Reservar Turno",
+                    flow_action: "navigate",
+                    flow_action_payload: {
+                        screen: "APPOINTMENT"
+                    }
+                }
+            }
+        }
+    };
+    try {
+        await axios.post(`https://graph.facebook.com/v18.0/${PHONE_NUMBER_ID}/messages`, data, {
+            headers: { 'Authorization': `Bearer ${WHATSAPP_TOKEN}` }
+        });
+    } catch (e) {
+        console.error("Error enviando Flow de Turnos:", e.response?.data || e.message);
     }
 }
 
@@ -285,7 +321,7 @@ functions.http('webhookSanidad', async (req, res) => {
                     if (buttonId === 'btn_inasistencia') {
                         await enviarFlowAusentismo(connection, telefono, nombre);
                     } else if (buttonId === 'btn_turno') {
-                        await enviarMensajeWA(telefono, "🩺 Para solicitar un turno médico, por favor comunícate con la Secretaría de Sanidad UNS o envía tu consulta.");
+                        await enviarFlowTurnos(connection, telefono, nombre);
                     }
                     return res.sendStatus(200);
                 }

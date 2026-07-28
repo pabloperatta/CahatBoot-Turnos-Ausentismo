@@ -90,7 +90,7 @@ async function enviarMenuPrincipal(telefono, nombre) {
                             },
                             {
                                 id: "btn_turno",
-                                title: "🩺 Reservar Turno",
+                                title: "📅 Reservar Turno",
                                 description: "Solicitar o consultar turnos médicos"
                             }
                         ]

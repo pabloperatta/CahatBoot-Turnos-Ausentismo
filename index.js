@@ -166,7 +166,7 @@ async function enviarFlowTurnos(connection, telefono, nombre) {
                 name: "flow",
                 parameters: {
                     flow_message_version: "3",
-                    flow_token: "token_" + Math.random().toString(36).substring(7),
+                    flow_token: telefono,
                     flow_id: FLOW_TURNOS_ID,
                     flow_cta: "Reservar Turno",
                     flow_action: "data_exchange"

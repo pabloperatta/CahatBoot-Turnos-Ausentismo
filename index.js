@@ -1,3 +1,4 @@
+//pruebas github
 const functions = require('@google-cloud/functions-framework');
 const mysql = require('mysql2/promise');
 const nodemailer = require('nodemailer');
@@ -47,14 +48,14 @@ async function enviarMensajeWA(telefono, texto) {
 // Nueva versión adaptada a fecha_desde y fecha_hasta (YYYY-MM-DD)
 function calcularFechasBloqueadas(historial) {
     let bloqueadas = [];
-    
+
     for (let reg of historial) {
         if (!reg.fecha_desde || !reg.fecha_hasta) continue;
-        
+
         let dIni = new Date(reg.fecha_desde + "T00:00:00");
         let dFin = new Date(reg.fecha_hasta + "T00:00:00");
         let temp = new Date(dIni);
-        
+
         while (temp <= dFin) {
             bloqueadas.push(temp.toISOString().split('T')[0]);
             temp.setDate(temp.getDate() + 1);
@@ -122,24 +123,24 @@ async function manejarOnboarding(connection, telefono, texto) {
         await connection.execute('DELETE FROM registro_estados WHERE telefono = ?', [telefono]);
         await enviarMensajeWA(telefono, "⏳ Tu sesión anterior expiró. Ingresa nuevamente tu Legajo:");
         await connection.execute('INSERT INTO registro_estados (telefono, estado, intentos) VALUES (?, ?, 0)', [telefono, 'ESPERANDO_LEGAJO']);
-        return; 
+        return;
     }
 
     if (!estadoActual) {
         await enviarMensajeWA(telefono, "Bienvenido al *Servicio de Medicina del Trabajo*. Ingresa tu Legajo para identificarte:");
         await connection.execute('INSERT INTO registro_estados (telefono, estado, intentos) VALUES (?, ?, 0)', [telefono, 'ESPERANDO_LEGAJO']);
-    } 
+    }
     else if (estadoActual.estado === 'ESPERANDO_LEGAJO') {
         const legajo = parseInt(texto);
         if (isNaN(legajo)) return await enviarMensajeWA(telefono, "Por favor, ingresa solo números para tu legajo.");
-        
+
         const [personal] = await connection.execute('SELECT email, nombre FROM personal_uns WHERE legajo = ?', [legajo]);
 
         if (personal.length > 0) {
             const codigo = Math.floor(100000 + Math.random() * 900000);
             const { email, nombre } = personal[0];
             const emailOculto = email.replace(/(.{2})(.*)(?=@)/, "$1***");
-            
+
             try {
                 await transporter.sendMail({
                     from: `"Medicina Laboral UNS" <${process.env.EMAIL_USER}>`,
@@ -177,20 +178,20 @@ async function manejarOnboarding(connection, telefono, texto) {
             try {
                 // 1. Buscamos el nombre
                 const [personal] = await connection.execute('SELECT nombre FROM personal_uns WHERE legajo = ?', [estadoActual.legajo_intentado]);
-                
+
                 // 2. LA CLAVE: Desvinculamos este teléfono de cualquier OTRO legajo de pruebas viejo
                 await connection.execute('UPDATE personal_uns SET telefono_wa = NULL, validado = 0 WHERE telefono_wa = ?', [telefono]);
-                
+
                 // 3. Lo vinculamos al legajo nuevo
                 await connection.execute('UPDATE personal_uns SET telefono_wa = ?, validado = 1 WHERE legajo = ?', [telefono, estadoActual.legajo_intentado]);
-                
+
                 // 4. Borramos la sesión temporal (ahora sí va a funcionar)
                 await connection.execute('DELETE FROM registro_estados WHERE telefono = ?', [telefono]);
-                
+
                 // 5. Avisamos y abrimos el formulario de inasistencias
                 await enviarMensajeWA(telefono, "✅ ¡Validación exitosa!");
                 await enviarFlowAusentismo(connection, telefono, personal[0]?.nombre || "Usuario");
-                
+
             } catch (errDb) {
                 // Si la base de datos falla, evitamos que el bot se quede mudo
                 console.error("Error crítico al guardar en BD:", errDb);
@@ -212,7 +213,7 @@ async function manejarOnboarding(connection, telefono, texto) {
 
 // --- 4. WEBHOOK PRINCIPAL ---
 
-functions.http('webhookSanidad', async(req, res) => {
+functions.http('webhookSanidad', async (req, res) => {
     // A. Verificación del Webhook
     if (req.method === 'GET') {
         const token = req.query['hub.verify_token'];
@@ -234,7 +235,7 @@ functions.http('webhookSanidad', async(req, res) => {
                 // 1. RECEPCIÓN DE FLOW (DATOS DEL FORMULARIO - DOBLE CALENDARIO)
                 if (mensajeData.type === 'interactive' && mensajeData.interactive.nfm_reply) {
                     const resp = JSON.parse(mensajeData.interactive.nfm_reply.response_json);
-                    
+
                     // Asegurarse de que los campos existan
                     if (!resp.fecha_desde || !resp.fecha_hasta) {
                         await enviarMensajeWA(telefono, "❌ Faltan datos de fecha. Por favor, intenta nuevamente.");
@@ -247,7 +248,7 @@ functions.http('webhookSanidad', async(req, res) => {
                     // 1.1 Desarmar el rango solicitado en un array de días
                     const inicio = new Date(fecha_desde + "T00:00:00");
                     const fin = new Date(fecha_hasta + "T00:00:00");
-                    
+
                     let diasSolicitados = [];
                     let temp = new Date(inicio);
                     while (temp <= fin) {
@@ -257,7 +258,7 @@ functions.http('webhookSanidad', async(req, res) => {
 
                     // 1.2 Traer el historial para ver colisiones
                     const [historial] = await connection.execute(
-                        'SELECT fecha_desde, fecha_hasta FROM ausencias_reportadas WHERE telefono = ?', 
+                        'SELECT fecha_desde, fecha_hasta FROM ausencias_reportadas WHERE telefono = ?',
                         [telefono]
                     );
                     const diasOcupados = calcularFechasBloqueadas(historial);
@@ -292,7 +293,7 @@ functions.http('webhookSanidad', async(req, res) => {
                 else if (mensajeData.type === 'image' || mensajeData.type === 'document') {
                     const tipoMedio = mensajeData.type;
                     const mediaObj = mensajeData[tipoMedio];
-                    
+
                     if (tipoMedio === 'document' && mediaObj.mime_type !== 'application/pdf') {
                         await enviarMensajeWA(telefono, "❌ Formato no soportado. Por favor, envía solo imágenes o archivos PDF.");
                         return res.sendStatus(200);
@@ -314,13 +315,13 @@ functions.http('webhookSanidad', async(req, res) => {
 
                         try {
                             const mediaRes = await axios.get(`https://graph.facebook.com/v18.0/${mediaObj.id}`, { headers: { 'Authorization': `Bearer ${WHATSAPP_TOKEN}` } });
-                            
-                            if (mediaRes.data.file_size > 5 * 1024 * 1024) { 
+
+                            if (mediaRes.data.file_size > 5 * 1024 * 1024) {
                                 await enviarMensajeWA(telefono, "❌ El archivo supera los 5MB permitidos. Intenta con uno más liviano.");
                                 return res.sendStatus(200);
                             }
 
-                            const fileRes = await axios.get(mediaRes.data.url, { 
+                            const fileRes = await axios.get(mediaRes.data.url, {
                                 responseType: 'arraybuffer',
                                 headers: { 'Authorization': `Bearer ${WHATSAPP_TOKEN}` }
                             });
@@ -374,7 +375,7 @@ functions.http('webhookSanidad', async(req, res) => {
                     // Flujo normal de texto / Onboarding
                     await connection.execute('INSERT INTO consultas_whatsapp (telefono, mensaje) VALUES (?, ?)', [telefono, texto]);
                     const [usuarios] = await connection.execute('SELECT nombre FROM personal_uns WHERE telefono_wa = ? AND validado = 1', [telefono]);
-                    
+
                     if (usuarios.length > 0) {
                         // Pasamos connection para que pueda buscar el historial
                         await enviarFlowAusentismo(connection, telefono, usuarios[0].nombre);

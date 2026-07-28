@@ -186,6 +186,41 @@ async function enviarFlowTurnos(connection, telefono, nombre) {
     }
 }
 
+async function enviarFlowTurnos(connection, telefono, nombre) {
+    const data = {
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: telefono,
+        type: "interactive",
+        interactive: {
+            type: "flow",
+            header: { type: "text", text: "Servicio de Medicina del Trabajo" },
+            body: { text: `Hola ${nombre}, para reservar tu turno médico presiona el botón de abajo.` },
+            footer: { text: "Sistema de Gestión de Turnos" },
+            action: {
+                name: "flow",
+                parameters: {
+                    flow_message_version: "3",
+                    flow_token: "token_" + Math.random().toString(36).substring(7),
+                    flow_id: FLOW_TURNOS_ID,
+                    flow_cta: "Reservar Turno",
+                    flow_action: "navigate",
+                    flow_action_payload: {
+                        screen: "APPOINTMENT"
+                    }
+                }
+            }
+        }
+    };
+    try {
+        await axios.post(`https://graph.facebook.com/v18.0/${PHONE_NUMBER_ID}/messages`, data, {
+            headers: { 'Authorization': `Bearer ${WHATSAPP_TOKEN}` }
+        });
+    } catch (e) {
+        console.error("Error enviando Flow de Turnos:", e.response?.data || e.message);
+    }
+}
+
 // --- 3. LÓGICA DE ONBOARDING ---
 
 async function manejarOnboarding(connection, telefono, texto) {

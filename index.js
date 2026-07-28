@@ -29,7 +29,7 @@ const transporter = nodemailer.createTransport({
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
 const FLOW_ID = process.env.FLOW_ID || "1492426432562187";
-const FLOW_TURNOS_ID = process.env.FLOW_TURNOS_ID || process.env.FLOW_ID || "1492426432562187";
+const FLOW_TURNOS_ID = process.env.FLOW_TURNOS_ID || "1722441952077691";
 
 // --- 2. FUNCIONES DE APOYO Y COMUNICACIÓN ---
 

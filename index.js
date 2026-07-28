@@ -76,7 +76,7 @@ async function enviarMenuPrincipal(telefono, nombre) {
             type: "list",
             header: { type: "text", text: "Sanidad UNS" },
             body: { text: `¡Hola ${nombre}! Bienvenido al centro de atención. Por favor, selecciona una opción:` },
-            footer: { text: "Servicio de Medicina Laboral" },
+            footer: { text: "💡 Escribe HOLA o MENU para ver opciones" },
             action: {
                 button: "📋 Ver Opciones",
                 sections: [
@@ -376,7 +376,7 @@ functions.http('webhookSanidad', async (req, res) => {
                     if (vaAAdjuntar) {
                         await enviarMensajeWA(telefono, "✅ Fechas registradas.\n\n📷 Ahora, por favor, envía una foto o PDF de tu certificado médico (Máx. 3 archivos).");
                     } else {
-                        await enviarMensajeWA(telefono, "✅ Inasistencia registrada correctamente en el sistema.");
+                        await enviarMensajeWA(telefono, "✅ Inasistencia registrada correctamente en el sistema.\n\n💡 Escribe *HOLA* o *MENU* en cualquier momento para volver al menú principal.");
                     }
                 }
 
@@ -455,7 +455,7 @@ functions.http('webhookSanidad', async (req, res) => {
                             const [adjuntos] = await connection.execute('SELECT COUNT(*) as total FROM adjuntos_reporte WHERE reporte_id = ?', [reportes[0].id]);
                             if (adjuntos[0].total > 0) {
                                 await connection.execute('UPDATE ausencias_reportadas SET estado = "COMPLETADO" WHERE id = ?', [reportes[0].id]);
-                                await enviarMensajeWA(telefono, "🎉 Trámite finalizado correctamente. Documentación recibida.");
+                                await enviarMensajeWA(telefono, "🎉 Trámite finalizado correctamente. Documentación recibida.\n\n💡 Escribe *HOLA* o *MENU* para volver al menú principal.");
                             } else {
                                 await enviarMensajeWA(telefono, "⚠️ Aún no has enviado ninguna foto. Debes enviar el certificado antes de escribir LISTO.");
                             }

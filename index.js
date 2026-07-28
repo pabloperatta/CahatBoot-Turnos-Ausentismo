@@ -169,10 +169,7 @@ async function enviarFlowTurnos(connection, telefono, nombre) {
                     flow_token: "token_" + Math.random().toString(36).substring(7),
                     flow_id: FLOW_TURNOS_ID,
                     flow_cta: "Reservar Turno",
-                    flow_action: "navigate",
-                    flow_action_payload: {
-                        screen: "APPOINTMENT"
-                    }
+                    flow_action: "data_exchange"
                 }
             }
         }

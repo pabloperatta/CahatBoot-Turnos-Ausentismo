@@ -64,7 +64,7 @@ function calcularFechasBloqueadas(historial) {
     return bloqueadas;
 }
 
-// Menú Principal Interactivo (Botones)
+// Menú Principal Interactivo (Lista Alineada a la Izquierda)
 async function enviarMenuPrincipal(telefono, nombre) {
     const data = {
         messaging_product: "whatsapp",
@@ -72,19 +72,27 @@ async function enviarMenuPrincipal(telefono, nombre) {
         to: telefono,
         type: "interactive",
         interactive: {
-            type: "button",
+            type: "list",
             header: { type: "text", text: "Sanidad UNS" },
-            body: { text: `¡Hola ${nombre}! Bienvenido al centro de atención. Por favor, seleccioná una opción:` },
+            body: { text: `¡Hola ${nombre}! Bienvenido al centro de atención. Por favor, selecciona una opción:` },
             footer: { text: "Servicio de Medicina Laboral" },
             action: {
-                buttons: [
+                button: "📋 Ver Opciones",
+                sections: [
                     {
-                        type: "reply",
-                        reply: { id: "btn_inasistencia", title: "📋 Inasistencia" }
-                    },
-                    {
-                        type: "reply",
-                        reply: { id: "btn_turno", title: "🩺 Reservar Turno" }
+                        title: "Servicios Disponibles",
+                        rows: [
+                            {
+                                id: "btn_inasistencia",
+                                title: "📋 Inasistencia",
+                                description: "Registrar inasistencia laboral o médica"
+                            },
+                            {
+                                id: "btn_turno",
+                                title: "🩺 Reservar Turno",
+                                description: "Solicitar o consultar turnos médicos"
+                            }
+                        ]
                     }
                 ]
             }
@@ -267,9 +275,10 @@ functions.http('webhookSanidad', async (req, res) => {
             const connection = await mysql.createConnection(dbConfig);
 
             try {
-                // 0. RECEPCIÓN DE RESPUESTA DE BOTONES INTERACTIVOS (MENÚ PRINCIPAL)
-                if (mensajeData.type === 'interactive' && mensajeData.interactive.button_reply) {
-                    const buttonId = mensajeData.interactive.button_reply.id;
+                // 0. RECEPCIÓN DE RESPUESTA DE INTERACTIVOS (MENÚ PRINCIPAL: BOTONES O LISTA)
+                if (mensajeData.type === 'interactive' && (mensajeData.interactive.button_reply || mensajeData.interactive.list_reply)) {
+                    const itemReply = mensajeData.interactive.button_reply || mensajeData.interactive.list_reply;
+                    const buttonId = itemReply.id;
                     const [usuarios] = await connection.execute('SELECT nombre FROM personal_uns WHERE telefono_wa = ? AND validado = 1', [telefono]);
                     const nombre = usuarios[0]?.nombre || "Usuario";
 

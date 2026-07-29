@@ -99,12 +99,12 @@ async function enviarMenuPrincipal(telefono, nombre) {
                             {
                                 id: "btn_inasistencia",
                                 title: "📋 Ausentismo",
-                                description: "Registrar Ausentismo laboral o médico"
+                                description: "Registrar Ausentismo Laboral"
                             },
                             {
                                 id: "btn_turno",
                                 title: "📅 Reservar Turno",
-                                description: "Solicitar o consultar Turnos"
+                                description: "Solicitar o Consultar Turnos"
                             }
                         ]
                     }

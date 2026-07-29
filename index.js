@@ -122,15 +122,15 @@ async function enviarFlowAusentismo(connection, telefono, nombre) {
         interactive: {
             type: "flow",
             header: { type: "text", text: "Servicio de Medicina del Trabajo" },
-            body: { text: `Hola ${nombre}, para registrar tu inasistencia presioná el botón de abajo.` },
-            footer: { text: "Sistema de Gestión de Personal" },
+            body: { text: `Hola ${nombre}, para registrar tu Ausentismo, presioná el botón de abajo.` },
+            footer: { text: "💡 Escribe HOLA o MENU para ver opciones" },
             action: {
                 name: "flow",
                 parameters: {
                     flow_message_version: "3",
                     flow_token: "token_" + Math.random().toString(36).substring(7),
                     flow_id: FLOW_ID,
-                    flow_cta: "Registrar Inasistencia",
+                    flow_cta: "Registrar Ausentismo",
                     flow_action: "navigate",
                     flow_action_payload: {
                         screen: "FORMULARIO_AUSENCIA",
@@ -358,7 +358,7 @@ functions.http('webhookSanidad', async (req, res) => {
                     const diaConflictivo = diasSolicitados.find(dia => diasOcupados.includes(dia));
 
                     if (diaConflictivo) {
-                        await enviarMensajeWA(telefono, `❌ *Error de validación*\n\nEl rango elegido incluye el día *${diaConflictivo}*, que ya tienes registrado en otra inasistencia.\n\nPor favor, vuelve a abrir el menú y ajusta las fechas.`);
+                        await enviarMensajeWA(telefono, `❌ *Error de validación*\n\nEl rango elegido incluye el día *${diaConflictivo}*, que ya tienes registrado.\n\nPor favor, vuelve a abrir el menú y ajusta las fechas.`);
                         return res.sendStatus(200);
                     }
 
@@ -376,7 +376,7 @@ functions.http('webhookSanidad', async (req, res) => {
                     if (vaAAdjuntar) {
                         await enviarMensajeWA(telefono, "✅ Fechas registradas.\n\n📷 Ahora, por favor, envía una foto o PDF de tu certificado médico (Máx. 3 archivos).");
                     } else {
-                        await enviarMensajeWA(telefono, "✅ Inasistencia registrada correctamente en el sistema.\n\n💡 Escribe *HOLA* o *MENU* en cualquier momento para volver al menú principal.");
+                        await enviarMensajeWA(telefono, "✅ Ausentismo registrado correctamente.\n\n💡 Escribe *HOLA* o *MENU* en cualquier momento para volver al menú principal.");
                     }
                 }
 

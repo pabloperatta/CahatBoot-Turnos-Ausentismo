@@ -78,85 +78,69 @@ function calcularFechasBloqueadas(historial) {
     return bloqueadas;
 }
 
-// Menú Principal Interactivo (Botones Directos)
-async function enviarMenuPrincipal(telefono, nombre) {
-    const data = {
-        messaging_product: "whatsapp",
-        recipient_type: "individual",
-        to: telefono,
-        type: "interactive",
-        interactive: {
-            type: "button",
-            header: { type: "text", text: "Servicio de Medicina del Trabajo" },
-            body: { text: `¡Hola ${nombre}! Bienvenido al Servicio de Medicina del Trabajo. Por favor, selecciona una opción:` },
-            footer: { text: "💡 Escribe HOLA o MENU para ver opciones" },
-            action: {
-                buttons: [
-                    {
-                        type: "reply",
-                        reply: { id: "btn_inasistencia", title: "📋 Ausentismo" }
-                    },
-                    {
-                        type: "reply",
-                        reply: { id: "btn_turno", title: "📅 Reservar Turno" }
-                    }
-                ]
-            }
-        }
-    };
-    try {
-        await axios.post(`https://graph.facebook.com/v18.0/${PHONE_NUMBER_ID}/messages`, data, {
-            headers: { 'Authorization': `Bearer ${WHATSAPP_TOKEN}` }
-        });
-    } catch (e) {
-        console.error("Error enviando menú principal:", e.response?.data || e.message);
+// Menú Principal Interactivo (2 Tarjetas de Flow Directas)
+async function enviarMenuPrincipal(connection, telefono, nombre) {
+    if (typeof connection === 'string') {
+        nombre = telefono;
+        telefono = connection;
+        connection = null;
     }
+    await enviarFlowAusentismo(connection, telefono, nombre);
+    await enviarFlowTurnos(telefono, nombre);
 }
 
-// Actualizado para inyectar las fechas bloqueadas al abrir el Flow
+// 1. Envío de Flow de Ausentismo (Acceso directo a FORMULARIO_AUSENCIA)
 async function enviarFlowAusentismo(connection, telefono, nombre) {
-    // 1. Buscamos el historial para mandar las fechas bloqueadas
-    const [historial] = await connection.execute('SELECT fecha_desde, fecha_hasta FROM ausencias_reportadas WHERE telefono = ?', [telefono]);
-    const fechasOcupadas = calcularFechasBloqueadas(historial);
+    let conn = connection;
+    let createdConn = false;
+    if (!conn) {
+        conn = await mysql.createConnection(dbConfig);
+        createdConn = true;
+    }
+    try {
+        const [historial] = await conn.execute('SELECT fecha_desde, fecha_hasta FROM ausencias_reportadas WHERE telefono = ?', [telefono]);
+        const fechasOcupadas = calcularFechasBloqueadas(historial);
 
-    const data = {
-        messaging_product: "whatsapp",
-        recipient_type: "individual",
-        to: telefono,
-        type: "interactive",
-        interactive: {
-            type: "flow",
-            header: { type: "text", text: "Servicio de Medicina del Trabajo" },
-            body: { text: `Hola ${nombre}, para registrar tu Ausentismo, presioná el botón de abajo.` },
-            footer: { text: "💡 Escribe HOLA o MENU para ver opciones" },
-            action: {
-                name: "flow",
-                parameters: {
-                    flow_message_version: "3",
-                    flow_token: "token_" + Math.random().toString(36).substring(7),
-                    flow_id: FLOW_ID,
-                    flow_cta: "Registrar Ausentismo",
-                    flow_action: "navigate",
-                    flow_action_payload: {
-                        screen: "FORMULARIO_AUSENCIA",
-                        data: {
-                            fechas_bloqueadas: fechasOcupadas // <-- Aquí inyectamos la data visual
+        const data = {
+            messaging_product: "whatsapp",
+            recipient_type: "individual",
+            to: telefono,
+            type: "interactive",
+            interactive: {
+                type: "flow",
+                header: { type: "text", text: "Servicio de Medicina del Trabajo" },
+                body: { text: `¡Hola ${nombre}! Para registrar un Ausentismo Laboral, presiona el botón de abajo.` },
+                footer: { text: "💡 Escribe HOLA o MENU para ver opciones" },
+                action: {
+                    name: "flow",
+                    parameters: {
+                        flow_message_version: "3",
+                        flow_token: "token_" + Math.random().toString(36).substring(7),
+                        flow_id: FLOW_ID,
+                        flow_cta: "📋 Registrar Ausentismo",
+                        flow_action: "navigate",
+                        flow_action_payload: {
+                            screen: "FORMULARIO_AUSENCIA",
+                            data: {
+                                fechas_bloqueadas: fechasOcupadas
+                            }
                         }
                     }
                 }
             }
-        }
-    };
-    try {
+        };
         await axios.post(`https://graph.facebook.com/v18.0/${PHONE_NUMBER_ID}/messages`, data, {
             headers: { 'Authorization': `Bearer ${WHATSAPP_TOKEN}` }
         });
     } catch (e) {
-        console.error("Error enviando Flow:", e.response?.data || e.message);
+        console.error("Error enviando Flow de Ausentismo:", e.response?.data || e.message);
+    } finally {
+        if (createdConn && conn) await conn.end();
     }
 }
 
-async function enviarFlowTurnos(connection, telefono, nombre) {
+// 2. Envío de Flow de Turnos (Acceso directo a APPOINTMENT)
+async function enviarFlowTurnos(telefono, nombre) {
     const data = {
         messaging_product: "whatsapp",
         recipient_type: "individual",
@@ -165,15 +149,15 @@ async function enviarFlowTurnos(connection, telefono, nombre) {
         interactive: {
             type: "flow",
             header: { type: "text", text: "Servicio de Medicina del Trabajo" },
-            body: { text: `Hola ${nombre}, para reservar tu turno médico presiona el botón de abajo.` },
-            footer: { text: "Sistema de Gestión de Turnos" },
+            body: { text: `Para solicitar o consultar Turnos Médicos, presiona el botón de abajo.` },
+            footer: { text: "💡 Escribe HOLA o MENU para ver opciones" },
             action: {
                 name: "flow",
                 parameters: {
                     flow_message_version: "3",
                     flow_token: telefono,
                     flow_id: FLOW_TURNOS_ID,
-                    flow_cta: "Reservar Turno",
+                    flow_cta: "📅 Reservar Turno",
                     flow_action: "data_exchange"
                 }
             }

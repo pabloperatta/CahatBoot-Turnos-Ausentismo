@@ -74,8 +74,8 @@ async function enviarMenuPrincipal(telefono, nombre) {
         type: "interactive",
         interactive: {
             type: "list",
-            header: { type: "text", text: "Sanidad UNS" },
-            body: { text: `¡Hola ${nombre}! Bienvenido al centro de atención. Por favor, selecciona una opción:` },
+            header: { type: "text", text: "Servicio de Medicina del Trabajo" },
+            body: { text: `¡Hola ${nombre}! Bienvenido al Servicio de Medicina del Trabajo. Por favor, selecciona una opción:` },
             footer: { text: "💡 Escribe HOLA o MENU para ver opciones" },
             action: {
                 button: "📋 Ver Opciones",
@@ -85,13 +85,13 @@ async function enviarMenuPrincipal(telefono, nombre) {
                         rows: [
                             {
                                 id: "btn_inasistencia",
-                                title: "📋 Inasistencia",
-                                description: "Registrar inasistencia laboral o médica"
+                                title: "📋 Ausentismo",
+                                description: "Registrar Ausentismo laboral o médico"
                             },
                             {
                                 id: "btn_turno",
                                 title: "📅 Reservar Turno",
-                                description: "Solicitar o consultar turnos médicos"
+                                description: "Solicitar o consultar Turnos"
                             }
                         ]
                     }

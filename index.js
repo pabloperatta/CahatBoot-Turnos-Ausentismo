@@ -37,9 +37,22 @@ async function enviarMensajeWA(telefono, texto) {
     try {
         await axios.post(`https://graph.facebook.com/v18.0/${PHONE_NUMBER_ID}/messages`, {
             messaging_product: "whatsapp",
+            recipient_type: "individual",
             to: telefono,
-            type: "text",
-            text: { body: `${texto}\n\n💡 _Escribe HOLA o MENU para ver opciones_` }
+            type: "interactive",
+            interactive: {
+                type: "button",
+                body: { text: texto },
+                footer: { text: "💡 Escribe HOLA o MENU para ver opciones" },
+                action: {
+                    buttons: [
+                        {
+                            type: "reply",
+                            reply: { id: "btn_menu_directo", title: "📋 Menú Principal" }
+                        }
+                    ]
+                }
+            }
         }, { headers: { 'Authorization': `Bearer ${WHATSAPP_TOKEN}` } });
     } catch (error) {
         console.error("Error enviando WA:", error.response?.data || error.message);
@@ -319,6 +332,12 @@ functions.http('webhookSanidad', async (req, res) => {
                         await enviarFlowAusentismo(connection, telefono, nombre);
                     } else if (buttonId === 'btn_turno') {
                         await enviarFlowTurnos(connection, telefono, nombre);
+                    } else if (buttonId === 'btn_menu_directo') {
+                        if (usuarios.length > 0) {
+                            await enviarMenuPrincipal(telefono, nombre);
+                        } else {
+                            await manejarOnboarding(connection, telefono, "hola");
+                        }
                     }
                     return res.sendStatus(200);
                 }

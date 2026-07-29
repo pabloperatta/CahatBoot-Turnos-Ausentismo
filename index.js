@@ -30,6 +30,7 @@ const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
 const FLOW_ID = process.env.FLOW_ID || "1492426432562187";
 const FLOW_TURNOS_ID = process.env.FLOW_TURNOS_ID || "1722441952077691";
+const FLOW_HUB_ID = process.env.FLOW_HUB_ID || "1751645145962515";
 
 // --- 2. FUNCIONES DE APOYO Y COMUNICACIÓN ---
 
@@ -78,15 +79,61 @@ function calcularFechasBloqueadas(historial) {
     return bloqueadas;
 }
 
-// Menú Principal Interactivo (2 Tarjetas de Flow Directas)
+// Menú Principal Interactivo (1 Sola Tarjeta de Flow Hub Unificado)
 async function enviarMenuPrincipal(connection, telefono, nombre) {
     if (typeof connection === 'string') {
         nombre = telefono;
         telefono = connection;
         connection = null;
     }
-    await enviarFlowAusentismo(connection, telefono, nombre);
-    await enviarFlowTurnos(telefono, nombre);
+
+    let conn = connection;
+    let createdConn = false;
+    if (!conn) {
+        conn = await mysql.createConnection(dbConfig);
+        createdConn = true;
+    }
+
+    try {
+        const [historial] = await conn.execute('SELECT fecha_desde, fecha_hasta FROM ausencias_reportadas WHERE telefono = ?', [telefono]);
+        const fechasOcupadas = calcularFechasBloqueadas(historial);
+
+        const data = {
+            messaging_product: "whatsapp",
+            recipient_type: "individual",
+            to: telefono,
+            type: "interactive",
+            interactive: {
+                type: "flow",
+                header: { type: "text", text: "Servicio de Medicina del Trabajo" },
+                body: { text: `¡Hola ${nombre}! Presiona el botón de abajo para acceder al centro de servicios de sanidad.` },
+                footer: { text: "💡 Escribe HOLA o MENU para ver este menú" },
+                action: {
+                    name: "flow",
+                    parameters: {
+                        flow_message_version: "3",
+                        flow_token: telefono,
+                        flow_id: FLOW_HUB_ID,
+                        flow_cta: "🚀 Menú de Servicios",
+                        flow_action: "navigate",
+                        flow_action_payload: {
+                            screen: "SCREEN_MENU",
+                            data: {
+                                fechas_bloqueadas: fechasOcupadas
+                            }
+                        }
+                    }
+                }
+            }
+        };
+        await axios.post(`https://graph.facebook.com/v18.0/${PHONE_NUMBER_ID}/messages`, data, {
+            headers: { 'Authorization': `Bearer ${WHATSAPP_TOKEN}` }
+        });
+    } catch (e) {
+        console.error("Error enviando Menú Hub:", e.response?.data || e.message);
+    } finally {
+        if (createdConn && conn) await conn.end();
+    }
 }
 
 // 1. Envío de Flow de Ausentismo (Acceso directo a FORMULARIO_AUSENCIA)

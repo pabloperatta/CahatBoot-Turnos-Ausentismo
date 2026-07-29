@@ -79,7 +79,7 @@ function calcularFechasBloqueadas(historial) {
     return bloqueadas;
 }
 
-// Menú Principal Interactivo (1 Sola Tarjeta de Flow Hub Unificado)
+// Menú Principal Interactivo (Opción 2: 2 Botones Directos de Respuesta Rápida)
 async function enviarMenuPrincipal(connection, telefono, nombre) {
     if (typeof connection === 'string') {
         nombre = telefono;
@@ -87,52 +87,36 @@ async function enviarMenuPrincipal(connection, telefono, nombre) {
         connection = null;
     }
 
-    let conn = connection;
-    let createdConn = false;
-    if (!conn) {
-        conn = await mysql.createConnection(dbConfig);
-        createdConn = true;
-    }
-
-    try {
-        const [historial] = await conn.execute('SELECT fecha_desde, fecha_hasta FROM ausencias_reportadas WHERE telefono = ?', [telefono]);
-        const fechasOcupadas = calcularFechasBloqueadas(historial);
-
-        const data = {
-            messaging_product: "whatsapp",
-            recipient_type: "individual",
-            to: telefono,
-            type: "interactive",
-            interactive: {
-                type: "flow",
-                header: { type: "text", text: "Servicio de Medicina del Trabajo" },
-                body: { text: `¡Hola ${nombre}! Presiona el botón de abajo para acceder al centro de servicios de sanidad.` },
-                footer: { text: "💡 Escribe HOLA o MENU para ver este menú" },
-                action: {
-                    name: "flow",
-                    parameters: {
-                        flow_message_version: "3",
-                        flow_token: telefono,
-                        flow_id: FLOW_HUB_ID,
-                        flow_cta: "🚀 Menú de Servicios",
-                        flow_action: "navigate",
-                        flow_action_payload: {
-                            screen: "SCREEN_MENU",
-                            data: {
-                                fechas_bloqueadas: fechasOcupadas
-                            }
-                        }
+    const data = {
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: telefono,
+        type: "interactive",
+        interactive: {
+            type: "button",
+            header: { type: "text", text: "Servicio de Medicina del Trabajo" },
+            body: { text: `¡Hola ${nombre}! Bienvenido al Servicio de Medicina del Trabajo. Por favor, selecciona una opción:` },
+            footer: { text: "💡 Escribe HOLA o MENU para ver opciones" },
+            action: {
+                buttons: [
+                    {
+                        type: "reply",
+                        reply: { id: "btn_inasistencia", title: "📋 Ausentismo" }
+                    },
+                    {
+                        type: "reply",
+                        reply: { id: "btn_turno", title: "📅 Reservar Turno" }
                     }
-                }
+                ]
             }
-        };
+        }
+    };
+    try {
         await axios.post(`https://graph.facebook.com/v18.0/${PHONE_NUMBER_ID}/messages`, data, {
             headers: { 'Authorization': `Bearer ${WHATSAPP_TOKEN}` }
         });
     } catch (e) {
-        console.error("Error enviando Menú Hub:", e.response?.data || e.message);
-    } finally {
-        if (createdConn && conn) await conn.end();
+        console.error("Error enviando menú principal:", e.response?.data || e.message);
     }
 }
 

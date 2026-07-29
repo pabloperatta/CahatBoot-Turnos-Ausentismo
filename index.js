@@ -78,7 +78,7 @@ function calcularFechasBloqueadas(historial) {
     return bloqueadas;
 }
 
-// Menú Principal Interactivo (Lista Alineada a la Izquierda)
+// Menú Principal Interactivo (Botones Directos)
 async function enviarMenuPrincipal(telefono, nombre) {
     const data = {
         messaging_product: "whatsapp",
@@ -86,27 +86,19 @@ async function enviarMenuPrincipal(telefono, nombre) {
         to: telefono,
         type: "interactive",
         interactive: {
-            type: "list",
+            type: "button",
             header: { type: "text", text: "Servicio de Medicina del Trabajo" },
             body: { text: `¡Hola ${nombre}! Bienvenido al Servicio de Medicina del Trabajo. Por favor, selecciona una opción:` },
             footer: { text: "💡 Escribe HOLA o MENU para ver opciones" },
             action: {
-                button: "📋 Ver Opciones",
-                sections: [
+                buttons: [
                     {
-                        title: "Servicios Disponibles",
-                        rows: [
-                            {
-                                id: "btn_inasistencia",
-                                title: "📋 Ausentismo",
-                                description: "Registrar Ausentismo Laboral"
-                            },
-                            {
-                                id: "btn_turno",
-                                title: "📅 Reservar Turno",
-                                description: "Solicitar o Consultar Turnos"
-                            }
-                        ]
+                        type: "reply",
+                        reply: { id: "btn_inasistencia", title: "📋 Ausentismo" }
+                    },
+                    {
+                        type: "reply",
+                        reply: { id: "btn_turno", title: "📅 Reservar Turno" }
                     }
                 ]
             }

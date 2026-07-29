@@ -39,7 +39,7 @@ async function enviarMensajeWA(telefono, texto) {
             messaging_product: "whatsapp",
             to: telefono,
             type: "text",
-            text: { body: texto }
+            text: { body: `${texto}\n\n💡 _Escribe HOLA o MENU para ver opciones_` }
         }, { headers: { 'Authorization': `Bearer ${WHATSAPP_TOKEN}` } });
     } catch (error) {
         console.error("Error enviando WA:", error.response?.data || error.message);
@@ -376,7 +376,7 @@ functions.http('webhookSanidad', async (req, res) => {
                     if (vaAAdjuntar) {
                         await enviarMensajeWA(telefono, "✅ Fechas registradas.\n\n📷 Ahora, por favor, envía una foto o PDF de tu certificado médico (Máx. 3 archivos).");
                     } else {
-                        await enviarMensajeWA(telefono, "✅ Ausentismo registrado correctamente.\n\n💡 Escribe *HOLA* o *MENU* en cualquier momento para volver al menú principal.");
+                        await enviarMensajeWA(telefono, "✅ Ausentismo registrado correctamente.\n\n");
                     }
                 }
 

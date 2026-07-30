@@ -369,13 +369,48 @@ functions.http('webhookSanidad', async (req, res) => {
                 else if (mensajeData.type === 'interactive' && mensajeData.interactive.nfm_reply) {
                     const resp = JSON.parse(mensajeData.interactive.nfm_reply.response_json);
 
-                    // Si es confirmación de Turno Médico
-                    if (resp.status === 'success' && !resp.fecha_desde) {
-                        await enviarMensajeWA(telefono, "🎉 *¡Reserva Confirmada con Éxito!*\n\nTu turno médico ha sido registrado correctamente en Sanidad UNS.");
+                    // 1.A Si es confirmación de Turno Médico
+                    if (resp.tramite === 'turnos' || resp.time || (resp.status === 'success' && !resp.fecha_desde)) {
+                        const turnoId = resp.time;
+                        if (turnoId && turnoId !== 'none') {
+                            const [usuarios] = await connection.execute('SELECT legajo FROM personal_uns WHERE telefono_wa = ? AND validado = 1', [telefono]);
+                            const legajo = usuarios[0]?.legajo || null;
+                            const obsReserva = `Reservado por WA: ${telefono} | Legajo: ${legajo || 'N/A'}`;
+
+                            await connection.execute(
+                                `UPDATE turnos SET personal_id = ?, estado = 'RESERVADO', expiracion_bloqueo = NULL, observaciones = ? WHERE id = ?`,
+                                [legajo, obsReserva, turnoId]
+                            );
+
+                            const [detalles] = await connection.execute(`
+                                SELECT t.id, DATE_FORMAT(t.fecha_turno, '%d/%m/%Y') AS fecha, TIME_FORMAT(t.hora_turno, '%H:%i') AS hora,
+                                       CONCAT(p.apellido, ', ', p.nombre) AS profesional_nombre,
+                                       e.nombre AS especialidad_nombre
+                                FROM turnos t
+                                LEFT JOIN profesionales p ON t.profesional_id = p.id
+                                LEFT JOIN especialidades e ON p.especialidad_id = e.id
+                                WHERE t.id = ?
+                            `, [turnoId]);
+
+                            const d = detalles[0];
+                            const msgSummary = d ? 
+                                `🎉 *¡Reserva de Turno Confirmada con Éxito!*\n\n` +
+                                `📅 *Fecha*: ${d.fecha}\n` +
+                                `⏰ *Hora*: ${d.hora} hs\n` +
+                                `🩺 *Especialidad*: ${d.especialidad_nombre || 'Medicina General'}\n` +
+                                `👨‍⚕️ *Profesional*: ${d.profesional_nombre || 'Profesional UNS'}\n` +
+                                `🔢 *Nro. de Turno*: #${d.id}\n\n` +
+                                `💡 _Escribe HOLA o MENU para volver a ver las opciones._` :
+                                `🎉 *¡Reserva Confirmada con Éxito!*\n\nTu turno #${turnoId} ha sido registrado correctamente en Sanidad UNS.`;
+
+                            await enviarMensajeWA(telefono, msgSummary);
+                        } else {
+                            await enviarMensajeWA(telefono, "🎉 *¡Reserva Confirmada con Éxito!*\n\nTu turno ha sido registrado en Sanidad UNS.");
+                        }
                         return res.sendStatus(200);
                     }
 
-                    // Si es Ausentismo: Asegurarse de que los campos existan
+                    // 1.B Si es Ausentismo: Asegurarse de que los campos existan
                     if (!resp.fecha_desde || !resp.fecha_hasta) {
                         await enviarMensajeWA(telefono, "❌ Faltan datos de fecha. Por favor, intenta nuevamente.");
                         return res.sendStatus(200);

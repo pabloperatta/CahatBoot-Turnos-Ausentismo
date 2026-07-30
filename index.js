@@ -365,11 +365,17 @@ functions.http('webhookSanidad', async (req, res) => {
                     return res.sendStatus(200);
                 }
 
-                // 1. RECEPCIÓN DE FLOW (DATOS DEL FORMULARIO - DOBLE CALENDARIO)
+                // 1. RECEPCIÓN DE FLOW (DATOS DEL FORMULARIO - AUSENTISMO O TURNOS)
                 else if (mensajeData.type === 'interactive' && mensajeData.interactive.nfm_reply) {
                     const resp = JSON.parse(mensajeData.interactive.nfm_reply.response_json);
 
-                    // Asegurarse de que los campos existan
+                    // Si es confirmación de Turno Médico
+                    if (resp.status === 'success' && !resp.fecha_desde) {
+                        await enviarMensajeWA(telefono, "🎉 *¡Reserva Confirmada con Éxito!*\n\nTu turno médico ha sido registrado correctamente en Sanidad UNS.");
+                        return res.sendStatus(200);
+                    }
+
+                    // Si es Ausentismo: Asegurarse de que los campos existan
                     if (!resp.fecha_desde || !resp.fecha_hasta) {
                         await enviarMensajeWA(telefono, "❌ Faltan datos de fecha. Por favor, intenta nuevamente.");
                         return res.sendStatus(200);

@@ -420,7 +420,7 @@ functions.http('webhookSanidad', async (req, res) => {
 
                             await enviarMensajeWA(telefono, msgSummary);
                         } else {
-                            await enviarMensajeWA(telefono, "🎉 *¡Reserva Confirmada con Éxito!*\n\nTu turno ha sido registrado en Sanidad UNS.");
+                            await enviarMensajeWA(telefono, "⚠️ *No se completó la reserva*\n\nNo se seleccionó un horario o turno válido.");
                         }
                         return res.sendStatus(200);
                     }

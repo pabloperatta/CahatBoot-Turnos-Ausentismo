@@ -375,6 +375,22 @@ functions.http('webhookSanidad', async (req, res) => {
                         if (turnoId && turnoId !== 'none') {
                             const [usuarios] = await connection.execute('SELECT legajo FROM personal_uns WHERE telefono_wa = ? AND validado = 1', [telefono]);
                             const legajo = usuarios[0]?.legajo || null;
+
+                            // Verificar si ya posee turno activo con este mismo profesional
+                            const [profCheck] = await connection.execute('SELECT profesional_id FROM turnos WHERE id = ?', [turnoId]);
+                            const profesionalId = profCheck[0]?.profesional_id;
+
+                            if (legajo && profesionalId) {
+                                const [dupCheck] = await connection.execute(
+                                    `SELECT id FROM turnos WHERE personal_id = ? AND profesional_id = ? AND estado IN ('RESERVADO', 'BLOQUEADO') AND id != ? AND fecha_turno >= CURDATE()`,
+                                    [legajo, profesionalId, turnoId]
+                                );
+                                if (dupCheck.length > 0) {
+                                    await enviarMensajeWA(telefono, "⚠️ *Reserva Cancelada*\n\nYa posees un turno médico activo agendado con este mismo profesional.");
+                                    return res.sendStatus(200);
+                                }
+                            }
+
                             const obsReserva = `Reservado por WA: ${telefono} | Legajo: ${legajo || 'N/A'}`;
 
                             await connection.execute(
@@ -393,14 +409,13 @@ functions.http('webhookSanidad', async (req, res) => {
                             `, [turnoId]);
 
                             const d = detalles[0];
-                            const msgSummary = d ? 
+                            const msgSummary = d ?
                                 `🎉 *¡Reserva de Turno Confirmada con Éxito!*\n\n` +
                                 `📅 *Fecha*: ${d.fecha}\n` +
                                 `⏰ *Hora*: ${d.hora} hs\n` +
                                 `🩺 *Especialidad*: ${d.especialidad_nombre || 'Medicina General'}\n` +
                                 `👨‍⚕️ *Profesional*: ${d.profesional_nombre || 'Profesional UNS'}\n` +
-                                `🔢 *Nro. de Turno*: #${d.id}\n\n` +
-                                `💡 _Escribe HOLA o MENU para volver a ver las opciones._` :
+                                `🔢 *Nro. de Turno*: #${d.id}\n\n` :
                                 `🎉 *¡Reserva Confirmada con Éxito!*\n\nTu turno #${turnoId} ha sido registrado correctamente en Sanidad UNS.`;
 
                             await enviarMensajeWA(telefono, msgSummary);

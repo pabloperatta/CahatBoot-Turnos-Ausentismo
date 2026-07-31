@@ -106,7 +106,7 @@ async function enviarMenuPrincipal(connection, telefono, nombre) {
             interactive: {
                 type: "flow",
                 header: { type: "text", text: "Servicio de Medicina del Trabajo" },
-                body: { text: `¡Hola ${nombre}! Presiona el botón de abajo para acceder al centro de servicios de sanidad.` },
+                body: { text: `¡Hola ${nombre}! Presiona el botón de abajo para acceder al Sistema de Gestión del Servicio de Medicna del Trabajo.` },
                 footer: { text: "💡 Escribe HOLA o MENU para ver este menú" },
                 action: {
                     name: "flow",
@@ -114,7 +114,7 @@ async function enviarMenuPrincipal(connection, telefono, nombre) {
                         flow_message_version: "3",
                         flow_token: telefono,
                         flow_id: FLOW_HUB_ID,
-                        flow_cta: "🚀 Menú de Servicios",
+                        flow_cta: "🚀 Sistema de Gestión",
                         flow_action: "navigate",
                         flow_action_payload: {
                             screen: "SCREEN_MENU",

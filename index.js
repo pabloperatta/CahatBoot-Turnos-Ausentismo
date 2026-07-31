@@ -380,13 +380,24 @@ functions.http('webhookSanidad', async (req, res) => {
                             const [profCheck] = await connection.execute('SELECT profesional_id FROM turnos WHERE id = ?', [turnoId]);
                             const profesionalId = profCheck[0]?.profesional_id;
 
-                            if (legajo && profesionalId) {
+                            if (profesionalId) {
+                                const telLimpio = String(telefono || '').replace(/\D/g, '');
+                                const tel10 = telLimpio.length >= 10 ? telLimpio.slice(-10) : telLimpio;
+                                const legajoStr = legajo ? String(legajo) : '-1';
+
                                 const [dupCheck] = await connection.execute(
-                                    `SELECT id FROM turnos WHERE personal_id = ? AND profesional_id = ? AND estado IN ('RESERVADO', 'BLOQUEADO') AND id != ? AND fecha_turno >= CURDATE()`,
-                                    [legajo, profesionalId, turnoId]
+                                    `SELECT id FROM turnos 
+                                     WHERE profesional_id = ? 
+                                       AND estado != 'DISPONIBLE' 
+                                       AND id != ? 
+                                       AND (
+                                         (personal_id IS NOT NULL AND (personal_id = ? OR CAST(personal_id AS CHAR) = ?)) 
+                                         OR (observaciones LIKE ?)
+                                       )`,
+                                    [profesionalId, turnoId, legajo || -1, legajoStr, `%${tel10}%`]
                                 );
                                 if (dupCheck.length > 0) {
-                                    await enviarMensajeWA(telefono, "⚠️ *Reserva Cancelada*\n\nYa posees un turno médico activo agendado con este mismo profesional.");
+                                    await enviarMensajeWA(telefono, "⚠️ *Reserva Cancelada*\n\nYa posees un turno médico agendado con este mismo profesional.");
                                     return res.sendStatus(200);
                                 }
                             }
